@@ -1,0 +1,38 @@
+create database almacen;
+use almacen;
+SHOW TABLES;
+select * from usuarios;
+
+CREATE TABLE usuarios (
+    idUsuario INT AUTO_INCREMENT PRIMARY KEY, 
+    nombre VARCHAR(100) NOT NULL,          
+    correo VARCHAR(100) NOT NULL UNIQUE,      
+    contraseña VARCHAR(255) NOT NULL,        
+    estatus ENUM('activo', 'inactivo') NOT NULL,
+    rol ENUM('admin', 'almacenista') NOT NULL  
+);
+
+select * from productos;
+
+CREATE TABLE Productos (
+    id_producto INT PRIMARY KEY AUTO_INCREMENT,
+    nombre_producto VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    cantidad_inventario INT DEFAULT 0,
+    estatus ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
+    usuarioId INT, 
+    FOREIGN KEY (usuarioId) REFERENCES usuarios(idUsuario)  
+);
+
+SELECT * FROM Movimientos;
+
+CREATE TABLE movimientos (
+    idMovimiento INT AUTO_INCREMENT PRIMARY KEY,
+    usuarioId INT NOT NULL,                   
+    productoId INT NOT NULL,                      
+    accion ENUM('creacion') NOT NULL,          
+    fechaHora TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    FOREIGN KEY (usuarioId) REFERENCES usuarios(idUsuario), 
+    FOREIGN KEY (productoId) REFERENCES Productos(id_producto) 
+);
+

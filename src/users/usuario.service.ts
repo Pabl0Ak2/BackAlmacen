@@ -2,45 +2,54 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Usuario } from './usuario.entity';
+import { Usuarios } from './usuario.entity';
+import { CreateUsuarioDto } from './create-usuario.dto';
 
 @Injectable()
 export class UsuarioService {
   constructor(
-    @InjectRepository(Usuario)
-    private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Usuarios)
+    private usuarioRepository: Repository<Usuarios>,
   ) {}
 
-  async register(nombre: string, correo: string, contraseña: string, rol: 'admin' | 'almacenista'): Promise<Usuario> {
+  async registrar(createUsuarioDto: CreateUsuarioDto): Promise<Usuarios> {
+    const { nombre, correo, contraseña, estatus, rol } = createUsuarioDto;
+  
+    const usuarioExistente = await this.usuarioRepository.findOne({ where: { correo } });
+    if (usuarioExistente) {
+      console.log('El correo ya está registrado');
+      throw new Error('El correo ya está registrado');
+    }
     const hashedPassword = await bcrypt.hash(contraseña, 10);
-
-    const newUser = this.usuarioRepository.create({
+    console.log('Contraseña cifrada:', hashedPassword);
+  
+    const nuevoUsuario = this.usuarioRepository.create({
       nombre,
       correo,
       contraseña: hashedPassword,
-      estatus: 'activo',
+      estatus,
       rol,
     });
-
-    return this.usuarioRepository.save(newUser);
+  
+    console.log('Nuevo usuario a guardar:', nuevoUsuario);
+  
+    const savedUsuario = await this.usuarioRepository.save(nuevoUsuario);
+    console.log('Usuario guardado:', savedUsuario);
+  
+    return savedUsuario;
   }
-
-  async login(correo: string, contraseña: string): Promise<any | null> {
+  
+  async login(correo: string, contraseña: string): Promise<Usuarios | null> {
     const usuario = await this.usuarioRepository.findOne({ where: { correo } });
-  
     if (!usuario) {
-      return null; 
+      throw new Error('Usuario no encontrado');
     }
-  
-    const isPasswordValid = await bcrypt.compare(contraseña, usuario.contraseña);
-    if (!isPasswordValid) {
-      return null; 
+
+    const contrasenaValida = await bcrypt.compare(contraseña, usuario.contraseña);
+    if (!contrasenaValida) {
+      throw new Error('Contraseña incorrecta');
     }
+
     return usuario;
   }
-
-  async findOneById(id_usuario: number): Promise<Usuario | undefined> {
-    return this.usuarioRepository.findOne({ where: { idUsuario: id_usuario } });
-  }
-  
 }

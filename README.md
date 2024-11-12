@@ -31,6 +31,18 @@
 ```bash
 $ npm install
 ```
+```bash
+$ install node v20.18.0
+https://nodejs.org/en/download/package-manager
+
+```
+
+```bash
+$ install  npm i -g @nestjs/cli
+
+```
+
+
 
 ## Compile and run the project
 

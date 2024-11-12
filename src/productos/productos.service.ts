@@ -1,68 +1,91 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Producto } from './productos.entity';
+import { Productos } from './productos.entity';
+import { Usuarios } from 'src/users/usuario.entity';
+import { CreateProductoDto } from './create-productos.dto';
+import { Movimientos } from '../movimientos/movimientos.entity';
 
 @Injectable()
-export class ProductosService {
+export class ProductoService {
   constructor(
-    @InjectRepository(Producto)
-    private readonly productosRepository: Repository<Producto>,
+    @InjectRepository(Productos)
+    private productoRepository: Repository<Productos>,
+    @InjectRepository(Usuarios)
+    private usuarioRepository: Repository<Usuarios>,
+    @InjectRepository(Movimientos)
+    private movimientosRepository: Repository<Movimientos>,
   ) {}
 
-  async obtenerTodosLosProductos(): Promise<Producto[]> {
-    return await this.productosRepository.find();
+  async findActiveProducts(): Promise<Pick<Productos, 'id_producto' | 'nombre_producto' | 'cantidad_inventario'>[]> {
+    return this.productoRepository.find({
+      select: ['id_producto', 'nombre_producto', 'cantidad_inventario'],
+      where: { estatus: 'Activo' },              
+    });
   }
-async crearProducto(
-    nombre_producto: string, 
-    descripcion: string, 
-    cantidad_inventario: number
-  ): Promise<Producto> {
-    const producto = this.productosRepository.create({
+
+  async decreaseProductQuantity(idProducto: number): Promise<Productos> {
+    const producto = await this.productoRepository.findOne({ where: { id_producto: idProducto } });
+
+    if (!producto) {
+      throw new Error('Producto no encontrado');
+    }
+
+    if (producto.cantidad_inventario <= 0) {
+      throw new Error('No hay suficiente inventario');
+    }
+
+    producto.cantidad_inventario -= 1;
+    return this.productoRepository.save(producto); 
+  }
+
+  async create(createProductoDto: CreateProductoDto): Promise<Productos> {
+    const { nombre_producto, descripcion, cantidad_inventario, estatus, usuarioId } = createProductoDto;
+
+    const usuario = await this.usuarioRepository.findOne({ where: { idUsuario: usuarioId } });
+    if (!usuario) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    const producto = this.productoRepository.create({
       nombre_producto,
       descripcion,
-      cantidad_inventario,  
-      estatus: 'Activo',     
+      cantidad_inventario,
+      estatus,
+      usuario,
     });
-    return await this.productosRepository.save(producto);
+
+    const savedProducto = await this.productoRepository.save(producto);
+
+    const movimiento = this.movimientosRepository.create({
+      usuarioId: usuario.idUsuario,
+      productoId: savedProducto.id_producto,
+      accion: 'Entrada',
+    });
+
+    await this.movimientosRepository.save(movimiento);
+
+    return savedProducto;
   }
-  
-  async actualizarCantidad(id_producto: number, cantidad: number): Promise<Producto> {
-    const producto = await this.productosRepository.findOne({ where: { id_producto } });
+
+  async findAll(): Promise<Productos[]> {
+    return this.productoRepository.find({
+      relations: ['usuario'],
+    });
+  }
+
+  async updateStatus(idProducto: number, estatus: 'Activo' | 'Inactivo'): Promise<Productos> {
+    const producto = await this.productoRepository.findOne({ where: { id_producto: idProducto } });
     if (!producto) {
       throw new Error('Producto no encontrado');
     }
 
-    if (producto.cantidad_inventario + cantidad < 0) {
-      throw new Error('No hay suficiente stock para disminuir');
+    if (estatus !== 'Activo' && estatus !== 'Inactivo') {
+      throw new Error('Estatus inválido');
     }
-  
-    producto.cantidad_inventario += cantidad;
-    return await this.productosRepository.save(producto);
-  }
-  
-  async actualizarDescripcion(id_producto: number, descripcion: string): Promise<Producto> {
-    const producto = await this.productosRepository.findOne({ where: { id_producto } });
-    if (!producto) {
-      throw new Error('Producto no encontrado');
-    }
-    producto.descripcion = descripcion;
-    return await this.productosRepository.save(producto);
-  }
 
-  async cambiarEstatus(id_producto: number, estatus: 'Activo' | 'Inactivo'): Promise<Producto> {
-    const producto = await this.productosRepository.findOne({ where: { id_producto } });
-    if (!producto) {
-      throw new Error('Producto no encontrado');
-    }
     producto.estatus = estatus;
-    return await this.productosRepository.save(producto);
-  }
-
-  async obtenerProductosActivos(): Promise<Producto[]> {
-    return await this.productosRepository.find({
-      where: { estatus: 'Activo' },
-    });
+    return this.productoRepository.save(producto);
   }
   
 }
