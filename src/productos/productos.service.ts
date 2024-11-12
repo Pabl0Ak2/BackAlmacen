@@ -60,13 +60,14 @@ export class ProductoService {
     const movimiento = this.movimientosRepository.create({
       usuarioId: usuario.idUsuario,
       productoId: savedProducto.id_producto,
-      accion: 'Entrada',
+      accion: 'creacion',
     });
 
     await this.movimientosRepository.save(movimiento);
 
     return savedProducto;
   }
+  
 
   async findAll(): Promise<Productos[]> {
     return this.productoRepository.find({

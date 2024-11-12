@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Usuarios } from 'src/users/usuario.entity';
-import { Productos } from '../productos/productos.entity';
+import { Productos } from 'src/productos/productos.entity';
 
 @Entity('movimientos')
 export class Movimientos {
@@ -15,9 +15,9 @@ export class Movimientos {
 
   @Column({
     type: 'enum',
-    enum: ['Entrada'],
+    enum: ['creacion'],
   })
-  accion: 'Entrada';
+  accion: 'creacion';
 
   @Column({
     type: 'timestamp',
